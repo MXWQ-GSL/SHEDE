@@ -164,14 +164,19 @@ class StatisticsScreen extends StatelessWidget {
           itemBuilder: (_, i) {
             final e = top[i];
             final pct = (e.value / total * 100).toInt();
-            return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Expanded(child: Text(e.key, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: c.neuLabel), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                Text('$pct%', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: c.neuSecondaryLabel)),
+            return GestureDetector(
+              onTap: () => ctx.push('/expense-manage', extra: {'category': e.key}),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Row(children: [
+                  Expanded(child: Text(e.key, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: c.neuLabel), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  Text('$pct%', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: c.neuSecondaryLabel)),
+                  const SizedBox(width: 4),
+                  Icon(Icons.chevron_right, size: 18, color: c.neuSecondaryLabel),
+                ]),
+                const SizedBox(height: 10),
+                _progressBar(e.value / total, c, sh, color: flowColors[i % flowColors.length]),
               ]),
-              const SizedBox(height: 10),
-              _progressBar(e.value / total, c, sh, color: flowColors[i % flowColors.length]),
-            ]);
+            );
           },
         ),
       );

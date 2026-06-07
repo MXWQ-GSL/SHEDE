@@ -17,12 +17,14 @@ import 'app.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 设置状态栏样式
+  // 设置状态栏样式 + 导航栏颜色
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
       statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: Color(0xFFE0E5EC),
+      systemNavigationBarIconBrightness: Brightness.dark,
     ),
   );
 
