@@ -11,6 +11,7 @@ import 'providers/project_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/repayment_provider.dart';
 import 'providers/living_cost_provider.dart';
+import 'services/notification_service.dart';
 import 'config/constants.dart';
 import 'app.dart';
 
@@ -49,6 +50,9 @@ void main() async {
   await Hive.openBox(AppConstants.settingsBox);
   await Hive.openBox<RepaymentPlan>(AppConstants.repaymentBox);
   await Hive.openBox<LivingCostMonth>(AppConstants.livingCostBox);
+
+  // 初始化通知服务
+  await NotificationService().init();
 
   runApp(
     MultiProvider(

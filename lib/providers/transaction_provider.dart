@@ -3,13 +3,29 @@ import 'package:hive/hive.dart';
 import 'package:uuid/uuid.dart';
 import '../config/constants.dart';
 import '../models/transaction.dart';
+import '../services/notification_service.dart';
 
 class TransactionProvider extends ChangeNotifier {
   late Box<Transaction> _transactionsBox;
   final _uuid = const Uuid();
+  final _notif = NotificationService();
+
+  // 通知设置（由 SettingsProvider 同步）
+  bool _notifEnabled = true;
+  int _advanceDays = 1;
+  int _notifHour = 9;
+  int _notifMinute = 0;
 
   TransactionProvider() {
     _transactionsBox = Hive.box<Transaction>(AppConstants.transactionsBox);
+  }
+
+  /// 由 SettingsProvider 调用，同步通知参数
+  void updateNotifSettings({required bool enabled, required int advanceDays, required int hour, required int minute}) {
+    _notifEnabled = enabled;
+    _advanceDays = advanceDays;
+    _notifHour = hour;
+    _notifMinute = minute;
   }
 
   // 获取所有交易
@@ -191,6 +207,17 @@ class TransactionProvider extends ChangeNotifier {
 
     await _transactionsBox.put(transaction.id, transaction);
     notifyListeners();
+
+    // 安排到期提醒
+    if (_notifEnabled && transaction.status != TransactionStatus.completed) {
+      await _notif.scheduleReminder(
+        txn: transaction,
+        advanceDays: _advanceDays,
+        hour: _notifHour,
+        minute: _notifMinute,
+      );
+    }
+
     return transaction;
   }
 
@@ -199,10 +226,22 @@ class TransactionProvider extends ChangeNotifier {
     transaction.updatedAt = DateTime.now();
     await _transactionsBox.put(transaction.id, transaction);
     notifyListeners();
+
+    // 重新安排提醒
+    await _notif.cancelReminder(transaction.id);
+    if (_notifEnabled && transaction.status != TransactionStatus.completed) {
+      await _notif.scheduleReminder(
+        txn: transaction,
+        advanceDays: _advanceDays,
+        hour: _notifHour,
+        minute: _notifMinute,
+      );
+    }
   }
 
   // 删除交易
   Future<void> deleteTransaction(String id) async {
+    await _notif.cancelReminder(id);
     await _transactionsBox.delete(id);
     notifyListeners();
   }
@@ -215,6 +254,7 @@ class TransactionProvider extends ChangeNotifier {
       transaction.completedDate = DateTime.now();
       transaction.updatedAt = DateTime.now();
       await _transactionsBox.put(id, transaction);
+      await _notif.cancelReminder(id);
       notifyListeners();
     }
   }
@@ -227,6 +267,17 @@ class TransactionProvider extends ChangeNotifier {
       transaction.completedDate = null;
       transaction.updatedAt = DateTime.now();
       await _transactionsBox.put(id, transaction);
+
+      // 重新安排提醒
+      if (_notifEnabled) {
+        await _notif.scheduleReminder(
+          txn: transaction,
+          advanceDays: _advanceDays,
+          hour: _notifHour,
+          minute: _notifMinute,
+        );
+      }
+
       notifyListeners();
     }
   }

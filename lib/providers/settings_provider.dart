@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import '../config/constants.dart';
+import '../models/transaction.dart';
+import '../services/notification_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
   late Box _settingsBox;
-  
+
   ThemeMode _themeMode = ThemeMode.system;
   double _monthlyBudget = 0;
   int _budgetResetDay = 1;
@@ -16,6 +18,20 @@ class SettingsProvider extends ChangeNotifier {
   SettingsProvider() {
     _settingsBox = Hive.box(AppConstants.settingsBox);
     _loadSettings();
+    // 应用启动时调度通知
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncNotifications());
+  }
+
+  /// 同步通知设置到 NotificationService
+  void _syncNotifications() {
+    final txnBox = Hive.box<Transaction>(AppConstants.transactionsBox);
+    NotificationService().rescheduleAll(
+      transactions: txnBox.values.toList(),
+      enabled: _reminderEnabled,
+      advanceDays: _reminderAdvanceDays,
+      hour: _reminderTime.hour,
+      minute: _reminderTime.minute,
+    );
   }
 
   // Getters
@@ -31,16 +47,16 @@ class SettingsProvider extends ChangeNotifier {
   void _loadSettings() {
     final themeIndex = _settingsBox.get(AppConstants.themeKey, defaultValue: 0);
     _themeMode = ThemeMode.values[themeIndex];
-    
+
     _monthlyBudget = _settingsBox.get(AppConstants.budgetKey, defaultValue: 0.0);
     _budgetResetDay = _settingsBox.get(AppConstants.budgetResetDayKey, defaultValue: 1);
-    
+
     _reminderEnabled = _settingsBox.get(AppConstants.reminderEnabledKey, defaultValue: true);
-    
+
     final hour = _settingsBox.get('${AppConstants.reminderTimeKey}_hour', defaultValue: 9);
     final minute = _settingsBox.get('${AppConstants.reminderTimeKey}_minute', defaultValue: 0);
     _reminderTime = TimeOfDay(hour: hour, minute: minute);
-    
+
     _reminderAdvanceDays = _settingsBox.get(AppConstants.reminderAdvanceDaysKey, defaultValue: 1);
     _overBudgetAlert = _settingsBox.get(AppConstants.overBudgetAlertKey, defaultValue: true);
   }
@@ -70,6 +86,7 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setReminderEnabled(bool enabled) async {
     _reminderEnabled = enabled;
     await _settingsBox.put(AppConstants.reminderEnabledKey, enabled);
+    _syncNotifications();
     notifyListeners();
   }
 
@@ -78,6 +95,7 @@ class SettingsProvider extends ChangeNotifier {
     _reminderTime = time;
     await _settingsBox.put('${AppConstants.reminderTimeKey}_hour', time.hour);
     await _settingsBox.put('${AppConstants.reminderTimeKey}_minute', time.minute);
+    _syncNotifications();
     notifyListeners();
   }
 
@@ -85,6 +103,7 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> setReminderAdvanceDays(int days) async {
     _reminderAdvanceDays = days;
     await _settingsBox.put(AppConstants.reminderAdvanceDaysKey, days);
+    _syncNotifications();
     notifyListeners();
   }
 
